@@ -10,6 +10,7 @@
 - [Usage](#usage)
   - [Command-Line Options](#command-line-options)
   - [Adding Custom Options](#adding-custom-options)
+  - [Logging Test Values](#logging-test-values)
 
 ## Features
 
@@ -56,3 +57,19 @@ def pytest_addoption(parser):
         help="Description of my custom option"
     )
 ```
+
+### Logging Test Values
+
+Values, readings, measurements, etc. can be logged and sent to the GUI using the Pytest builtin fixture `record_property`. These will be contained in the `details` object of the test_finished event message.
+
+Example:
+```python
+def test_example(record_property):
+    value = 1
+    expected = 2
+    record_property("value", value)
+    record_property("expected", expected)
+    assert value == expected, f"value {value} does not equal {expected}"
+```
+
+Results in message details: `[['value', 1], ['expected', 2]]`
