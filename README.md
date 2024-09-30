@@ -24,7 +24,7 @@ You can install `pytest-sequence-reporter` directly from the GitHub repository u
 ### Installing from GitHub
 
 ```bash
-pip install git+https://github.com/yourusername/pytest-sequence-reporter.git
+pip install git+https://github.com/JusticeAVSolutions/pytest-sequence-reporter.git
 ```
 
 ## Usage
