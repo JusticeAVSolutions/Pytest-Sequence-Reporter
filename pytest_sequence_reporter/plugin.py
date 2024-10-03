@@ -170,7 +170,8 @@ def pytest_runtest_logreport(report):
             'test_id': nodeid,
             'outcome': outcome,
             'duration': total_duration,
-            'details': user_properties  # Keep as a list
+            #'details': user_properties  # report all phases
+            'details': call_report.user_properties  # report just call phase (typical usage)
         }
 
         try:
