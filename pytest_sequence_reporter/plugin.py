@@ -171,7 +171,7 @@ def pytest_runtest_logreport(report):
             'outcome': outcome,
             'duration': total_duration,
             #'details': user_properties  # report all phases
-            'details': call_report.user_properties  # report just call phase (typical usage)
+            'details': getattr(call_report, 'user_properties', [])  # report just call phase (typical usage)
         }
 
         try:
