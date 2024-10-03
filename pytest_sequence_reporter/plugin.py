@@ -9,6 +9,7 @@ API_ENDPOINT = '/message'
 custom_options = []
 sequencer_reporting_enabled = False
 sequencer_api_url = "http://localhost:8765/"  # Default value
+test_reports = {}  # Dictionary to store test reports
 
 def add_custom_option(parser, *args, **kwargs):
     """
@@ -106,25 +107,83 @@ def pytest_runtest_logreport(report):
     """
     Hook called after each test phase (setup, call, teardown).
     """
-    if report.when != 'call' or not sequencer_reporting_enabled:
+    if not sequencer_reporting_enabled:
         return
 
-    message = {
-        'event': 'test_finished',
-        'test_id': report.nodeid,
-        'outcome': report.outcome,
-        'duration': report.duration,
-        'details': report.user_properties
-    }
+    nodeid = report.nodeid
 
-    try:
-        response = requests.post(f"{sequencer_api_url}{API_ENDPOINT}", json=message)
-        response.raise_for_status()
-        print(f"Sent test_finished message for {report.nodeid}")
-    except requests.RequestException as e:
-        print(f"Failed to send test_finished message for {report.nodeid}")
-        print(f"Exception: {e}")
-        traceback.print_exc()
+    if nodeid not in test_reports:
+        test_reports[nodeid] = {}
+
+    test_reports[nodeid][report.when] = report
+
+    if report.when == 'teardown':
+        # This is the last phase, we can process the reports
+        # Determine the overall outcome
+        reports = test_reports[nodeid]
+        setup_report = reports.get('setup')
+        call_report = reports.get('call')
+        teardown_report = reports.get('teardown')
+
+        outcome = None
+
+        # Check for errors in setup or teardown
+        if ((setup_report and setup_report.outcome == 'failed' and not getattr(setup_report, 'wasxfail', False)) or
+            (teardown_report and teardown_report.outcome == 'failed' and not getattr(teardown_report, 'wasxfail', False))):
+            outcome = 'error'
+        elif call_report:
+            if getattr(call_report, 'wasxfail', False):
+                if call_report.outcome == 'passed':
+                    # Expected to fail but passed
+                    outcome = 'xpassed'
+                else:
+                    # Expected to fail and did fail
+                    outcome = 'xfailed'
+            else:
+                if call_report.outcome == 'passed':
+                    outcome = 'passed'
+                elif call_report.outcome == 'failed':
+                    outcome = 'failed'
+                elif call_report.outcome == 'skipped':
+                    # Test was skipped without xfail
+                    outcome = 'skipped'
+                else:
+                    outcome = call_report.outcome
+        else:
+            # No call phase
+            if setup_report and setup_report.outcome == 'skipped':
+                outcome = 'skipped'
+            else:
+                outcome = 'error'
+
+        total_duration = sum(rep.duration for rep in reports.values() if rep)
+
+        # Collect user_properties from all phases
+        user_properties = []
+        for phase in ['call', 'setup', 'teardown']:
+            phase_report = reports.get(phase)
+            if phase_report and phase_report.user_properties:
+                user_properties.extend(phase_report.user_properties)
+
+        message = {
+            'event': 'test_finished',
+            'test_id': nodeid,
+            'outcome': outcome,
+            'duration': total_duration,
+            'details': user_properties  # Keep as a list
+        }
+
+        try:
+            response = requests.post(f"{sequencer_api_url}{API_ENDPOINT}", json=message)
+            response.raise_for_status()
+            print(f"Sent test_finished message for {nodeid} with outcome: {outcome}")
+        except requests.RequestException as e:
+            print(f"Failed to send test_finished message for {nodeid}")
+            print(f"Exception: {e}")
+            traceback.print_exc()
+        finally:
+            # Clean up the stored reports for this test
+            del test_reports[nodeid]
 
 def pytest_sessionfinish(session, exitstatus):
     """
