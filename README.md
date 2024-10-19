@@ -40,22 +40,15 @@ After installing the plugin, you can use the provided command-line options to en
 
 ### Adding Custom Options
 
-You can add custom command-line options to Pytest and have them recognized by the test sequencer using the `add_custom_option` function provided by the plugin.
+You can add custom command-line options to Pytest and have them recognized by the test sequencer by declaring `__pytest_sequencer_plugin__ = True` in modules and plugins.
 
 Example:
 
 ```python
-# conftest.py
-from pytest_sequence_reporter.plugin import add_custom_option
+__pytest_sequencer_plugin__ = True
 
 def pytest_addoption(parser):
-    add_custom_option(
-        parser,
-        "--my-custom-option",
-        action="store",
-        default="default_value",
-        help="Description of my custom option"
-    )
+    parser.addoption("--custom-option", action="store", default="default_value", help="Description of the custom option.")
 ```
 
 ### Logging Test Values

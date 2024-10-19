@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pytest-sequence-reporter',
-    version='0.1.3',
+    version='0.2.0',
     author='Mark Mayhew',
     author_email='mark.mayhew@javs.com',
     description='A Pytest plugin for reporting test events to a sequencer GUI.',

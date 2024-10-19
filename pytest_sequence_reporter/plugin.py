@@ -2,6 +2,9 @@ import pytest
 import requests
 import json
 import traceback
+from mock_parser import MockParser
+
+__pytest_sequencer_plugin__ = True
 
 API_ENDPOINT = '/message'
 
@@ -11,45 +14,39 @@ sequencer_reporting_enabled = False
 sequencer_api_url = "http://localhost:8765/"  # Default value
 test_reports = {}  # Dictionary to store test reports
 
-def add_custom_option(parser, *args, **kwargs):
-    """
-    Adds a custom option to the pytest parser and stores its details.
-    """
-    option = parser.addoption(*args, **kwargs)
-    custom_options.append({
-        "name": args[0],
-        "default": kwargs.get("default"),
-        "help": kwargs.get("help")
-    })
-    return option
+# def add_custom_option(parser, *args, **kwargs):
+#     """
+#     Adds a custom option to the pytest parser and stores its details.
+#     """
+#     option = parser.addoption(*args, **kwargs)
+#     custom_options.append({
+#         "name": args[0],
+#         "default": kwargs.get("default"),
+#         "help": kwargs.get("help")
+#     })
+#     return option
+
+
 
 def pytest_addoption(parser):
     """
     Hook to add custom command-line options to pytest.
     """
-    add_custom_option(
-        parser,
-        "--enable-sequencer-reporting",
+    parser.addoption("--enable-sequencer-reporting",
         action="store_true",
         default=False,
-        help="Enable notifications to the test sequencer GUI."
-    )
-    add_custom_option(
-        parser,
-        "--list-options",
+        help="Enable notifications to the test sequencer GUI.")
+    
+    parser.addoption("--list-options",
         action="store_true",
         default=False,
-        help="List all pytest addoptions with their default values"
-    )
-    add_custom_option(
-        parser,
-        "--sequencer-api",
+        help="List all pytest addoptions with their default values")
+
+    parser.addoption("--sequencer-api",
         action="store",
         type=str,
         default="http://localhost:8765/",
-        help="API URL for sequencer"
-    )
-    # Add more options using add_custom_option as needed
+        help="API URL for sequencer")
 
 def pytest_sessionstart(session):
     """
@@ -57,13 +54,62 @@ def pytest_sessionstart(session):
     """
     config = session.config
     if config.getoption("list_options", False):
-        # Exclude the --list-options itself from the output
-        filtered_options = [
-            option for option in custom_options if option["name"] != "--list-options"
-        ]
-        # Serialize the options to JSON and print
-        json_output = json.dumps(filtered_options)
-        print(json_output)
+        # # Exclude the --list-options itself from the output
+        # filtered_options = [
+        #     option for option in custom_options if option["name"] != "--list-options"
+        # ]
+        # # Serialize the options to JSON and print
+        # json_output = json.dumps(filtered_options)
+        # print(json_output)
+        # Serialize the options using mock_parser and print as JSON
+        plugins_info = []
+        plugin_manager = config.pluginmanager
+        mock_parser = MockParser()
+
+        for plugin in plugin_manager.get_plugins():
+            # Retrieve plugin name accurately
+            if hasattr(plugin, '__name__') and plugin.__name__ != '__main__':
+                plugin_name = plugin.__name__
+            elif hasattr(plugin, '__class__'):
+                plugin_name = f"{plugin.__class__.__module__}.{plugin.__class__.__name__}"
+            else:
+                plugin_name = str(plugin)
+
+            # Check for the custom marker
+            if not getattr(plugin, '__pytest_sequencer_plugin__', False):
+                continue  # Skip plugins that are not marked as custom
+
+            plugin_options = []
+
+            if hasattr(plugin, 'pytest_addoption'):
+                mock_parser.set_current_plugin(plugin_name)
+                try:
+                    plugin.pytest_addoption(mock_parser)
+                except TypeError as e:
+                    plugin_options.append({
+                        "error": f"Failed to retrieve options: {e}"
+                    })
+                except Exception as e:
+                    plugin_options.append({
+                        "error": f"Failed to retrieve options: {e}"
+                    })
+
+                # Retrieve options for this plugin
+                options = mock_parser.plugin_options.get(plugin_name, [])
+                plugin_options.extend(options)
+
+            # **Filter out the --list-options from the plugin options**
+            filtered_options = [
+                option for option in plugin_options if "--list-options" not in option["name"]
+            ]
+
+            plugins_info.append({
+                "name": plugin_name,
+                "options": filtered_options
+            })
+
+        # Output the information as JSON
+        print(json.dumps(plugins_info))
         # Gracefully terminate the pytest session
         pytest.exit("Listed all custom options in JSON format.", returncode=0)
 
