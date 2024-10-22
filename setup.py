@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pytest-sequence-reporter',
-    version='0.2.0',
+    version='0.2.1',
     author='Mark Mayhew',
     author_email='mark.mayhew@javs.com',
     description='A Pytest plugin for reporting test events to a sequencer GUI.',
@@ -10,6 +10,7 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/JusticeAVSolutions/Pytest-Sequence-Reporter',
     packages=find_packages(),
+    include_package_data=True,
     install_requires=[
         'pytest>=6.0.0',
         'requests',
