@@ -2,7 +2,7 @@ import pytest
 import requests
 import json
 import traceback
-from mock_parser import MockParser
+from pytest_sequence_reporter.mock_parser import MockParser
 
 __pytest_sequencer_plugin__ = True
 
@@ -13,20 +13,6 @@ custom_options = []
 sequencer_reporting_enabled = False
 sequencer_api_url = "http://localhost:8765/"  # Default value
 test_reports = {}  # Dictionary to store test reports
-
-# def add_custom_option(parser, *args, **kwargs):
-#     """
-#     Adds a custom option to the pytest parser and stores its details.
-#     """
-#     option = parser.addoption(*args, **kwargs)
-#     custom_options.append({
-#         "name": args[0],
-#         "default": kwargs.get("default"),
-#         "help": kwargs.get("help")
-#     })
-#     return option
-
-
 
 def pytest_addoption(parser):
     """
